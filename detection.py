@@ -50,6 +50,28 @@ stop_video_processed = threading.Event()
 webcam = cv.VideoCapture("http://192.168.1.28:4444/video_feed") #Connect to the webcam
 webcam_lock = threading.Lock() #Lock for controlling access to the webcam
 
+def load_video_raw(currentState, userName, frame, stop_event): #Function to load the raw video stream
+    global webcam, webcam_lock #Declare the global variables
+    currentState.config(text="Current State: Camera loaded") #Update the current state label
+    log_activity(f"{userName} clicked load camera button.") #Log the activity
+    video_label2 = tk.Label(frame) #Create a label for the video stream
+    video_label2.grid(row=2, column=0, columnspan=2) #Grid the label in the frame
+
+    if not webcam.isOpened(): #Check if the webcam is not opened
+        currentState.config(text="Current State: No Connection") #Update the current state label
+    else:
+        while not stop_event.is_set(): #Loop until the stop event is set
+            with webcam_lock: #Lock the webcam
+               ret, frame = webcam.read() #Read the frame from the webcam
+            if ret: #Check if the frame is read successfully
+                rgb_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB) #Convert the frame to RGB format
+                rgb_frame = cv.resize(rgb_frame, (256, 256)) #Resize the frame to 256x256
+                image = Image.fromarray(rgb_frame) #Convert the frame to an image
+                photo = ImageTk.PhotoImage(image=image) #Convert the image to a PhotoImage object
+                video_label2.config(image=photo) #Update the label with the new image
+                video_label2.image = photo  # Keep a reference to the image to prevent garbage collection
+                root.after(0, update_label, Image.fromarray(rgb_frame), video_label2) #Update the label with the new image
+
 def getCanny(frame): #Function to get the canny image from the webcam
 
     gray = cv.cvtColor(frame, cv.COLOR_RGB2GRAY) #Convert the frame to grayscale
@@ -122,29 +144,6 @@ def showLines(frame, lines): #
         cv.line(lines_visualize, (x1, y1), (x2, y2), (0, 0, 255), 5)  # Draw centerline in red
 
     return lines_visualize
-
-def load_video_raw(currentState, userName, frame, stop_event): #Function to load the raw video stream
-    global webcam, webcam_lock #Declare the global variables
-    currentState.config(text="Current State: Camera loaded") #Update the current state label
-    log_activity(f"{userName} clicked load camera button.") #Log the activity
-    video_label2 = tk.Label(frame) #Create a label for the video stream
-    video_label2.grid(row=2, column=0, columnspan=2) #Grid the label in the frame
-
-    if not webcam.isOpened(): #Check if the webcam is not opened
-        currentState.config(text="Current State: No Connection") #Update the current state label
-    else:
-        while not stop_event.is_set(): #Loop until the stop event is set
-            with webcam_lock: #Lock the webcam
-               ret, frame = webcam.read() #Read the frame from the webcam
-            if ret: #Check if the frame is read successfully
-                rgb_frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB) #Convert the frame to RGB format
-                rgb_frame = cv.resize(rgb_frame, (256, 256)) #Resize the frame to 256x256
-                image = Image.fromarray(rgb_frame) #Convert the frame to an image
-                photo = ImageTk.PhotoImage(image=image) #Convert the image to a PhotoImage object
-                video_label2.config(image=photo) #Update the label with the new image
-                video_label2.image = photo  # Keep a reference to the image to prevent garbage collection
-                root.after(0, update_label, Image.fromarray(rgb_frame), video_label2) #Update the label with the new image
-
 
 def load_video_processed(currentState, userName, frame, stop_event): #Function to load the processed video stream
     global webcam, webcam_lock #Declare the global variables
